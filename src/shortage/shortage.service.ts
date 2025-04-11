@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateShortageDto } from './dto/create-shortage.dto';
 import { UpdateShortageDto } from './dto/update-shortage.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -13,16 +13,6 @@ export class ShortageService {
     @InjectModel(Shortage.name) private shortageModel: Model<Shortage>,
   ) {}
   async create(createShortageDto: CreateShortageDto) {
-    // const createdShortage = new this.shortageModel(createShortageDto);
-    /**
-     * Goal: create a drug model from the create shortageDto & and create a shortage model;
-     * Step 1: extract the drugmodel fields from the shortageDTO;
-     * Step 2: Create the drugmodel;
-     * Step 3: extract the drugmodel id;
-     * Step 4: save the drug model;
-     * Step 5: create the shortages model;
-     * Step 6: save the shortages model;
-     */
     const {
       drug_name: name,
       drug_category: category,
@@ -40,19 +30,40 @@ export class ShortageService {
     const newShortage = new this.shortageModel(shortageFields);
     return await newShortage.save();
   }
-  async findAlternatives(drug_name: string) {
+
+  /**
+   * Finds alternative drugs for a given drug name.
+   *
+   * This function searches the drug collection for a drug by its name.
+   * If found, it looks up the shortage information using the drug's ID
+   * and returns the list of alternative drugs if available.
+   *
+   * @param {string} drug_name - The name of the drug to find alternatives for.
+   * @returns {Promise<string[] | undefined>} A promise that resolves to an array of alternative drug names or undefined if no alternatives are found.
+   * @throws {NotFoundException} Throws an error if the drug is not found in the database.
+   */
+  async findAlternatives(drug_name: string): Promise<string[] | undefined> {
     //work in progress
-    return this.shortageModel
-      .find({ name: drug_name })
-      .populate({
-        path: 'drug_id',
-        model: 'Drug',
-        localField: 'drug_id',
-        foreignField: '_id',
-      })
-      .exec();
+    const drug = await this.drugModel.findOne({ name: drug_name }).exec();
+    if (drug) {
+      const id: string = drug['_id'];
+      const shortageInfo = await this.shortageModel
+        .findOne({ drug_id: id }, 'alternatives')
+        .exec();
+      return shortageInfo?.alternatives;
+    } else {
+      throw new NotFoundException();
+    }
   }
-  async findAll(region: string = '', category: string = '') {
+
+  /**
+   * Retrieves a list of shortages filtered by region and/or category.
+   *
+   * @param {string} [region=''] - The region to filter shortages by.
+   * @param {string} [category=''] - The category to filter shortages by.
+   * @returns {Promise<any[]>} A promise that resolves to an array of shortage documents.
+   */
+  async findAll(region: string = '', category: string = ''): Promise<any[]> {
     const filter = {};
     if (region) {
       filter['region'] = region;
@@ -63,7 +74,13 @@ export class ShortageService {
     return await this.shortageModel.find(filter).exec();
   }
 
-  async findOne(id: string) {
+  /**
+   * Retrieves a single shortage record by its ID, populating the related drug information.
+   *
+   * @param {string} id - The ID of the shortage document to retrieve.
+   * @returns {Promise<any>} A promise that resolves to the shortage document with populated drug information.
+   */
+  async findOne(id: string): Promise<any> {
     const result = await this.shortageModel
       .findById(id)
       .populate({
@@ -76,7 +93,16 @@ export class ShortageService {
     return result;
   }
 
-  async update(id: string, updateShortageDto: UpdateShortageDto) {
+  /**
+   *  Updates a single shortage record by ID
+   * @param {string } id document ID
+   * @param {UpdateShortageDto} updateShortageDto An object containing updated information
+   * @returns {Promise<UpdateShortageDto>}
+   */
+  async update(
+    id: string,
+    updateShortageDto: UpdateShortageDto,
+  ): Promise<CreateShortageDto | null> {
     //when you think you have a reason to remove element from the alternatives array then implement it;
     if (updateShortageDto.alternatives) {
       const { alternatives, ...others } = updateShortageDto;
@@ -94,7 +120,12 @@ export class ShortageService {
     });
   }
 
-  remove(id: string) {
+  /**
+   * Deletes a document from the database
+   * @param {string} id Document ID
+   * @returns {Promise<any>}
+   */
+  remove(id: string): Promise<any> {
     return this.shortageModel.findByIdAndDelete(id);
   }
 }
