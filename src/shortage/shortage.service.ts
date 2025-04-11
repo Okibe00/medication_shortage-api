@@ -12,7 +12,13 @@ export class ShortageService {
     @InjectModel(Drug.name) private drugModel: Model<Drug>,
     @InjectModel(Shortage.name) private shortageModel: Model<Shortage>,
   ) {}
-  async create(createShortageDto: CreateShortageDto) {
+  /**
+   * Creates a drug shortage document
+   *
+   * @param {CreateShortageDto} createShortageDto shortage document details
+   * @returns {CreateShortageDto} Created shortage document
+   */
+  async create(createShortageDto: CreateShortageDto): Promise<any> {
     const {
       drug_name: name,
       drug_category: category,
