@@ -5,11 +5,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Shortage } from './entities/shortage.entity';
 import { Model } from 'mongoose';
 import { Drug } from 'src/drugs/entities/drug.entity';
-
+import { DrugsService } from 'src/drugs/drugs.service';
+//currently switching to using the service instead of using the model
 @Injectable()
 export class ShortageService {
   constructor(
-    @InjectModel(Drug.name) private drugModel: Model<Drug>,
+    private drugService: DrugsService,
     @InjectModel(Shortage.name) private shortageModel: Model<Shortage>,
   ) {}
   /**
@@ -25,13 +26,15 @@ export class ShortageService {
       drug_manufacturer: manufacturer,
       ...shortageFields
     } = createShortageDto;
-    const newDrug = new this.drugModel({
+    const newDrug = this.drugService.create({
       name,
       manufacturer,
       category,
     });
-    await newDrug.save();
-    const { _id: drug_id } = newDrug;
+    // await newDrug.save();
+    // const { _id: drug_id } = newDrug;
+    console.log(newDrug);
+    const drug_id = (await newDrug)._id;
     shortageFields['drug_id'] = drug_id;
     const newShortage = new this.shortageModel(shortageFields);
     return await newShortage.save();
@@ -50,7 +53,8 @@ export class ShortageService {
    */
   async findAlternatives(drug_name: string): Promise<string[] | undefined> {
     //work in progress
-    const drug = await this.drugModel.findOne({ name: drug_name }).exec();
+    // const drug = await this.drugService.findOne({ name: drug_name }).exec();
+    const [drug] = await this.drugService.find(drug_name);
     if (drug) {
       const id: string = drug['_id'];
       const shortageInfo = await this.shortageModel
@@ -63,21 +67,75 @@ export class ShortageService {
   }
 
   /**
-   * Retrieves a list of shortages filtered by region and/or category.
-   *
-   * @param {string} [region=''] - The region to filter shortages by.
-   * @param {string} [category=''] - The category to filter shortages by.
-   * @returns {Promise<any[]>} A promise that resolves to an array of shortage documents.
+   * Create a filter object
+   * @param {string } name name of the medication
+   * @param region region experiencing shortage
+   * @param category catgeory of drug
+   * @returns {name?: name, category?: category, region?: region} | {}
    */
-  async findAll(region: string = '', category: string = ''): Promise<any[]> {
+  _filter(
+    name: string | undefined,
+    region: string | undefined,
+    category: string | undefined,
+  ): { name?: string; category?: string; region?: string } {
     const filter = {};
     if (region) {
       filter['region'] = region;
     }
     if (category) {
-      filter['category'] = category;
+      filter['drug.category'] = category;
     }
-    return await this.shortageModel.find(filter).exec();
+    if (name) {
+      filter['drug.name'] = name;
+    }
+    return filter;
+  }
+
+  /**
+   * Retrieves a list of shortages filtered by region and/or category.
+   *
+   * @param {string} region - The region to filter shortages by.
+   * @param {string} category - The category to filter shortages by.
+   * @param {string} name - The name to filter shortages by.
+   * @returns {Promise<any[]>} A promise that resolves to an array of shortage documents.
+   */
+  async findAll(
+    region: string | undefined,
+    category: string | undefined,
+    name: string | undefined,
+  ): Promise<any[]> {
+    return await this.shortageModel.aggregate([
+      {
+        $lookup: {
+          from: 'drugs',
+          localField: 'drug_id',
+          foreignField: '_id',
+          as: 'drug',
+        },
+      },
+      {
+        $unwind: '$drug',
+      },
+      {
+        $match: this._filter(name, region, category),
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              '$$ROOT',
+              {
+                drug: {
+                  name: '$drug.name',
+                  category: '$drug.category',
+                  id: '$drug._id',
+                },
+              },
+            ],
+          },
+        },
+      },
+    ]);
   }
 
   /**
