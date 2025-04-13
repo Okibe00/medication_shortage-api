@@ -4,13 +4,13 @@ import { ShortageController } from './shortage.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Shortage, ShortageSchema } from './entities/shortage.entity';
 import { DrugsModule } from 'src/drugs/drugs.module';
-import { Drug, DrugSchema } from 'src/drugs/entities/drug.entity';
+// import { Drug, DrugSchema } from 'src/drugs/entities/drug.entity'; 
 
 @Module({
   imports: [
     DrugsModule,
     MongooseModule.forFeature([
-      { name: Drug.name, schema: DrugSchema },
+      // { name: Drug.name, schema: DrugSchema },
       { name: Shortage.name, schema: ShortageSchema },
     ]),
   ],

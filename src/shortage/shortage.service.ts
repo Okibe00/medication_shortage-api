@@ -4,9 +4,9 @@ import { UpdateShortageDto } from './dto/update-shortage.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Shortage } from './entities/shortage.entity';
 import { Model } from 'mongoose';
-import { Drug } from 'src/drugs/entities/drug.entity';
+// import { Drug } from 'src/drugs/entities/drug.entity';
 import { DrugsService } from 'src/drugs/drugs.service';
-//currently switching to using the service instead of using the model
+
 @Injectable()
 export class ShortageService {
   constructor(
@@ -31,9 +31,6 @@ export class ShortageService {
       manufacturer,
       category,
     });
-    // await newDrug.save();
-    // const { _id: drug_id } = newDrug;
-    console.log(newDrug);
     const drug_id = (await newDrug)._id;
     shortageFields['drug_id'] = drug_id;
     const newShortage = new this.shortageModel(shortageFields);
@@ -153,6 +150,7 @@ export class ShortageService {
         localField: 'drug_id',
         foreignField: '_id',
       })
+      .lean()
       .exec();
     return result;
   }

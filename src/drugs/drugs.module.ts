@@ -10,6 +10,6 @@ import { Drug, DrugSchema } from './entities/drug.entity';
   ],
   controllers: [DrugsController],
   providers: [DrugsService],
-  exports: [DrugsService],
+  exports: [MongooseModule, DrugsService],
 })
 export class DrugsModule {}

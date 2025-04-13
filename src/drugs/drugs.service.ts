@@ -12,7 +12,9 @@ export class DrugsService {
     const newDrug = new this.drugModel(createDrugDto);
     return newDrug.save();
   }
-
+  async find(name: string) {
+    return await this.drugModel.find({ name: name });
+  }
   findAll() {
     return this.drugModel.find({}).exec();
   }

@@ -29,7 +29,7 @@ export class ShortageController {
     return this.shortageService.findAlternatives(data.drug_name);
   }
   @Get()
-  findAll(@Query() data: { region?: string; category?: string }) {
+  findAll(@Query() data: { region?: string; category?: string; name: string }) {
     /**
      * Query Parameters: drug_name, region, category
      * Goal: filter find all result by drug_name, region adn category or all three if possible;
@@ -38,9 +38,9 @@ export class ShortageController {
      * Step 3: Pass the filters to the the service and filter
      */
     // console.log(data);
-    const { region, category } = data;
+    const { region, category, name } = data;
     // console.log(region, category);
-    return this.shortageService.findAll(region, category);
+    return this.shortageService.findAll(region, category, name);
   }
 
   @Get(':id')
